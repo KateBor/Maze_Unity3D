@@ -1,10 +1,12 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using System.Collections.Generic;
-//using System;
+using UnityEngine.UI;
+using System;
 
 public class BuildMaze : MonoBehaviour
 {
+  private static float size = 1.5f;
   private int _wall = -1;
   private int _empty = 0;
   private int width_ = 21;
@@ -12,26 +14,45 @@ public class BuildMaze : MonoBehaviour
   private int[,] Maze = new int[21, 21];
   private Vector3[] PossibleStart = new Vector3[4];
 
-  public GameObject Wall, restartButton, text, hand;
-  public GameObject AllWalls;
+  public Text bestTime;
+  public GameObject Wall, restartButton, text, hand, textFinish, textTimeIsOver;
+  public GameObject AllWalls, Platform, MainCamera;
 
-  public static bool isFirstPlay = true;
   public static bool isFinish = false;
-  public /*static*/ GameObject finish, player;
+  public GameObject finish, player;
 
   System.Random rnd = new System.Random();
 
   private void Start()
   {
+    Init();
+  }
+
+  public void Init() {
+    if (!PlayerPrefs.HasKey("bestTime"))
+    {
+      PlayerPrefs.SetInt("bestTime", 0);
+    }
+    TimeSpan tm = TimeSpan.FromMilliseconds(PlayerPrefs.GetInt("bestTime"));
+    bestTime.text = tm.Minutes + ":" + tm.Seconds + ":" + tm.Milliseconds;
+
+    Wall.transform.localScale = new Vector3(size, 0.8f, size);
+    MainCamera.transform.localPosition = new Vector3(10 * size, 22, -7);
+    Platform.transform.localScale = new Vector3(size * 21, 1f, size * 21);
+    Platform.transform.localPosition = new Vector3(10 * size, (float)-0.5, 10 * size);
+
     for (int i = 0; i < height_; i++)
+    {
       for (int j = 0; j < width_; j++)
       {
-        Maze[i,j] = _empty;
+        Maze[i, j] = _empty;
       }
-    PossibleStart[0] = new Vector3(1, (float)1.5, 1);
-    PossibleStart[1] = new Vector3(1, (float)1.5, 19);
-    PossibleStart[2] = new Vector3(19, (float)1.5, 1);
-    PossibleStart[3] = new Vector3(19, (float)1.5, 19);
+    }
+
+    PossibleStart[0] = new Vector3(size, (float)0.8, size); //надо переделать чтоб не было захардкожено
+    PossibleStart[1] = new Vector3(size, (float)0.8, 19 * size);
+    PossibleStart[2] = new Vector3(19 * size, (float)0.8, size);
+    PossibleStart[3] = new Vector3(19 * size, (float)0.8, 19 * size);
   }
 
   private bool IsPassage(int str, int elem, int lastElem)
@@ -146,7 +167,7 @@ public class BuildMaze : MonoBehaviour
 
     for (int j = 1; j < width_ - 3; j += 2)
     {
-      if (rnd.Next() % 100 > 15)//изменить вероятность
+      if (rnd.Next() % 100 > 15) //изменить вероятность
       {
         Maze[i, j + 1] = _wall;
       }
@@ -236,13 +257,13 @@ public class BuildMaze : MonoBehaviour
         if(Maze[i, j] == _wall)
         {
           GameObject NewWall = Instantiate(Wall,
-            new Vector3(i,  1f, j), Quaternion.identity) as GameObject;
+            new Vector3((float)(i * size), 0.5f, (float)(j * size)), Quaternion.identity) as GameObject;
           NewWall.transform.SetParent(AllWalls.transform);
         }
       }
     }
+    SetStartAndFinish();
   }
-
   private enum Turn
   { 
     Right,
@@ -251,24 +272,12 @@ public class BuildMaze : MonoBehaviour
     Up,
     None,
   }
-  /*private class Position
-  {
-    public Turn LastTurn;
-    public Vector2 Point;
-
-    public Position(Turn lastTurn, Vector2 point)
-    {
-      LastTurn = lastTurn;
-      Point = point;
-    }
-  }*/
-
   private Vector2[] deltha = new Vector2[]
   {
     new Vector2(-1, 0),
     new Vector2(0, -1),
     new Vector2(1, 0),
-    new Vector2(0, 1),
+    new Vector2(0, 1)
   };
 
   /// <summary>
@@ -279,8 +288,8 @@ public class BuildMaze : MonoBehaviour
     player.transform.position = PossibleStart[rnd.Next() % 4];
     player.SetActive(true);
 
-    var sx = (int)player.transform.position.x;
-    var sz = (int)player.transform.position.z;
+    var sx = (int)(player.transform.position.x / size);
+    var sz = (int)(player.transform.position.z / size);
 
     var q = new Queue<Vector2>();
     var used = new bool[21, 21];
@@ -303,7 +312,6 @@ public class BuildMaze : MonoBehaviour
         int newY = (int)(pos.y + deltha[(int)t].y);
         if (!used[newX, newY] && Maze[newX, newY] != _wall)
         {
-          //Debug.Log($"({pos.x},{pos.y}) -> ({newX},{newY})");
           used[newX, newY] = true;
           q.Enqueue(new Vector2(newX, newY));
         }
@@ -312,121 +320,33 @@ public class BuildMaze : MonoBehaviour
       lastPos = pos;
     }
 
-    finish.transform.position = new Vector3(lastPos.x, 1, lastPos.y);
+    finish.transform.position = new Vector3(lastPos.x * size, 1, lastPos.y * size);
     finish.SetActive(true);
-  }
-
-  /*
-  private Turn GetReverseTurn(Turn turn)
-  {
-    switch (turn)
-    {
-      case Turn.Right:
-        return Turn.Left;
-      case Turn.Down:
-        return Turn.Up;
-      case Turn.Left:
-        return Turn.Right;
-      case Turn.Up:
-        return Turn.Down;
-      default:
-        return Turn.None;
-    }
-  }
-  */
-
-  /*private void SetFinish()
-  {
-    player.transform.position = PossibleStart[rnd.Next() % 4];
-    player.SetActive(true);
-    
-
-    //алгоритм находящий самый длинный путь
-
-    int sx = (int) player.transform.position.x;
-    int sz = (int) player.transform.position.z;
-    string LastTypeMove = "";
-
-    points.Enqueue(new Vector2(sx, sz));
-
-    //наверное visited не обязательно
-    //List<Vector2> visited = new List<Vector2>();
-    //visited.Add(new Vector2(sx, sz));
-
-    CheckWall();
-
-    while (points.Count != 0)
-    {
-      if (LastTypeMove == "Left")
-        CheckWall(3);
-      else if (LastTypeMove == "Right")
-        CheckWall(1);
-      else if (LastTypeMove == "Up")
-        CheckWall(4);
-      else if (LastTypeMove == "Down")
-        CheckWall(2);
-      else if (LastTypeMove == "DeadEnd")
-        //придумоть
-        ;
-    }
-    finish.SetActive(true);
-  }
-
-  void CheckWall(int except = 0)
-  {
-    int fx = (int) finish.transform.position.x;
-    int fz = (int) finish.transform.position.z;
-    
-    if (except != 1 && Maze[fx - 1, fz] != _wall)
-      points.Enqueue(new Vector2(fx - 1, fz));
-    if (except != 2 && Maze[fx, fz + 1] != _wall)
-      points.Enqueue(new Vector2(fx, fz + 1));
-    if (except != 3 && Maze[fx + 1, fz] != _wall)
-      points.Enqueue(new Vector2(fx + 1, fz));
-    if (except != 4 && Maze[fx, fz - 1] != _wall)
-      points.Enqueue(new Vector2(fx, fz - 1));
-
-    points.Dequeue();
-    if (points.Count == 0)
-      return;
-
-    if (fx + 1 == points.Peek().x)
-      LastTypeMove = "Right";
-    else if (fx - 1 == points.Peek().x)
-      LastTypeMove = "Left";
-    else if (fz + 1 == points.Peek().x)
-      LastTypeMove = "Up";
-    else if (fx - 1 == points.Peek().x)
-      LastTypeMove = "Down";
-    else
-      //добавить проверку на перемещение из тупика в другую точку, а то так бесконечно проверяться будет
-      LastTypeMove = "DeadEnd";
-
-    finish.transform.position = new Vector3 (points.Peek().x, 1, points.Peek().y);
-  }*/
-
-  private bool IsFinish()
-  {//не уверена что работает
-    if (!isFirstPlay)
-      return (finish.transform.position == player.transform.position);
-    //условие на совпадение координат
-    else return true;
   }
 
   private void Update()
   {
-    if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject() /*&& /*GameController.IsFinish()*/)
+    if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) //для телефона надо сделать touch
     {
-      foreach (Transform child in AllWalls.transform)
-      {
-        Destroy(child.gameObject);
-      }
-      isFirstPlay = false;
-      Build();
-      SetStartAndFinish();
-      restartButton.SetActive(true);
-      text.SetActive(false);
-      hand.SetActive(false);
+      RerunMaze();
     }
+  }
+
+  public void RerunMaze()
+  {
+    restartButton.SetActive(true);
+    text.SetActive(false);
+    hand.SetActive(false);
+    textFinish.SetActive(false);
+    textTimeIsOver.SetActive(false);
+    foreach (Transform child in AllWalls.transform)
+    {
+      Destroy(child.gameObject);
+    }
+    Init();
+    player.GetComponent<ControlBall>().GetComponent<Rigidbody>().velocity = Vector3.zero;
+    Build();
+    Debug.Log("rerun");
+    finish.GetComponent<Timer>().Init();
   }
 }

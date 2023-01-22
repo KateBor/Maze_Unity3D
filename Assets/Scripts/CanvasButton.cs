@@ -2,14 +2,20 @@
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
+
 public class CanvasButton : MonoBehaviour
 {
+  public GameObject gameController;
   public void RestartGame()
   {
     /*if (PlayerPrefs.GetString("music") != "No")
     {
       GetComponent<AudioSource>().Play();
     }*/
-    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    gameController.GetComponent<BuildMaze>().RerunMaze();
+    //Destroy(gameController.GetComponent<BuildMaze>());
+    //gameController.AddComponent<BuildMaze>();
+    //SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+
   }
 }
